@@ -1,18 +1,46 @@
-const Koa = require("koa");
-const Router = require("koa-router");
 const logger = require("koa-logger");
 const responseTime = require("koa-response-time");
 const bodyParser = require("koa-bodyparser");
+const ratelimit = require("koa-ratelimit");
+const Router = require("koa-router");
+const Koa = require("koa");
 
 const app = new Koa();
-const router = new Router();
 
-// Middleware untuk catat waktu respon (di ctx.response.get('X-Response-Time'))
-app.use(responseTime());
 app.use(logger());
+app.use(responseTime());
 app.use(bodyParser());
 
-// Middleware: tambahkan ctx.ping untuk semua request
+const ratelimitВb = new Map();
+
+app.use(
+  ratelimit({
+    driver: "memory",
+    db: ratelimitВb,
+    duration: 1000 * 55,
+    errorMessage: {
+      ok: false,
+      error: {
+        code: 429,
+        message: 'Rate limit exceeded. See "Retry-After"',
+      },
+    },
+    id: (ctx) => ctx.ip,
+    headers: {
+      remaining: "Rate-Limit-Remaining",
+      reset: "Rate-Limit-Reset",
+      total: "Rate-Limit-Total",
+    },
+    max: 20,
+    disableHeader: false,
+    whitelist: (ctx) => {
+      return ctx.query.botToken === process.env.BOT_TOKEN;
+    },
+    blacklist: (ctx) => {},
+  })
+);
+
+app.use(require("./helpers").helpersApi);
 app.use(async (ctx, next) => {
   const start = Date.now();
   await next();
@@ -28,18 +56,18 @@ const sendHealth = (ctx) => {
     ping: ctx.ping,
   };
 };
+const route = new Router();
 
-router.get("/ping", sendHealth);
-router.get("/", sendHealth);
-
-// Route API lainnya
 const routes = require("./routes");
-router.use("/api", routes.routeApi.routes());
 
-app.use(router.routes()).use(router.allowedMethods());
+app.get("/ping", sendHealth);
+app.get("/", sendHealth);
+route.use("/*", routes.routeApi.routes());
 
-// Start server
+app.use(route.routes());
+
 const port = process.env.PORT || 3000;
+
 app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
+  console.log("Listening on localhost, port", port);
 });
