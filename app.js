@@ -3,8 +3,6 @@ const Router = require("koa-router");
 const logger = require("koa-logger");
 const responseTime = require("koa-response-time");
 const bodyParser = require("koa-bodyparser");
-const serve = require("koa-static");
-const path = require("path");
 
 const app = new Koa();
 const router = new Router();
@@ -13,9 +11,6 @@ const router = new Router();
 app.use(responseTime());
 app.use(logger());
 app.use(bodyParser());
-
-// Serve static files (jika perlu)
-app.use(serve(path.join(__dirname, "public")));
 
 // Middleware: tambahkan ctx.ping untuk semua request
 app.use(async (ctx, next) => {
