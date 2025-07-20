@@ -60,8 +60,8 @@ const route = new Router();
 
 const routes = require("./routes");
 
-app.get("/ping", sendHealth);
-app.get("/", sendHealth);
+route.get("/ping", sendHealth);
+route.get("/", sendHealth);
 route.use("/*", routes.routeApi.routes());
 
 app.use(route.routes());
